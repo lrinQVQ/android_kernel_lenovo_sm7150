@@ -13,7 +13,7 @@
 #include "sm6150-audio-overlay.dtsi"
 
 &bolero {
-	status = "disabled";
+	status = "okay";
 };
 
 &wcd937x_codec {
@@ -32,10 +32,6 @@
 	status = "disabled";
 };
 
-&wsa_swr_gpios {
-	status = "disabled";
-};
-
 &rx_swr_gpios {
 	status = "disabled";
 };
@@ -44,16 +40,8 @@
 	status = "disabled";
 };
 
-&wsa_spkr_en1 {
-	status = "disabled";
-};
-
-&wsa_spkr_en2 {
-	status = "disabled";
-};
-
 &wcd9xxx_intc {
-	status = "okay";
+	status = "disable";
 };
 
 &qupv3_se4_spi {
@@ -61,11 +49,11 @@
 };
 
 &tavil_wdsp {
-	status = "okay";
+	status = "disabled";
 };
 
 &tavil_glink {
-	status = "okay";
+	status = "disabled";
 };
 
 &slim_aud {
@@ -77,7 +65,7 @@
 };
 
 &wcd934x_cdc {
-	status = "okay";
+	status = "disabled";
 };
 
 &clock_audio {

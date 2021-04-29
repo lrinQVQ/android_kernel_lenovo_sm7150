@@ -21,7 +21,6 @@
 #include <linux/component.h>
 #include <linux/of_irq.h>
 #include <linux/extcon.h>
-#include <linux/soc/qcom/fsa4480-i2c.h>
 
 #include "sde_connector.h"
 
@@ -2217,17 +2216,10 @@ static int dp_display_usbpd_get(struct dp_display_private *dp)
 	return rc;
 }
 
-static int dp_display_fsa4480_callback(struct notifier_block *self,
-		unsigned long event, void *data)
-{
-	return 0;
-}
-
 static int dp_display_init_aux_switch(struct dp_display_private *dp)
 {
 	int rc = 0;
 	const char *phandle = "qcom,dp-aux-switch";
-	struct notifier_block nb;
 
 	if (!dp->pdev->dev.of_node) {
 		pr_err("cannot find dev.of_node\n");
@@ -2241,17 +2233,6 @@ static int dp_display_init_aux_switch(struct dp_display_private *dp)
 		pr_warn("cannot parse %s handle\n", phandle);
 		goto end;
 	}
-
-	nb.notifier_call = dp_display_fsa4480_callback;
-	nb.priority = 0;
-
-	rc = fsa4480_reg_notifier(&nb, dp->aux_switch_node);
-	if (rc) {
-		pr_err("failed to register notifier (%d)\n", rc);
-		goto end;
-	}
-
-	fsa4480_unreg_notifier(&nb, dp->aux_switch_node);
 end:
 	return rc;
 }

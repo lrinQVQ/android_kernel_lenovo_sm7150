@@ -35,6 +35,7 @@
 #include "hid-ids.h"
 
 #define unk	KEY_UNKNOWN
+struct hid_input *hidinputall;
 
 static const unsigned char hid_keyboard[256] = {
 	  0,  0,  0,  0, 30, 48, 46, 32, 18, 33, 34, 35, 23, 36, 37, 38,
@@ -69,6 +70,23 @@ static const struct {
 		&max, EV_ABS, (c))
 #define map_key_clear(c)	hid_map_usage_clear(hidinput, usage, &bit, \
 		&max, EV_KEY, (c))
+bool irq_wake_enabled;
+void report_powerkey(void )
+{
+if(irq_wake_enabled==true)
+{
+	if(hidinputall->input !=NULL){
+		input_report_key(hidinputall->input,KEY_POWER,1);
+		input_sync(hidinputall->input);
+		input_report_key(hidinputall->input,KEY_POWER,0);
+		input_sync(hidinputall->input);
+		irq_wake_enabled=false;
+	}else{
+          printk("null point causes report fail");
+        }
+printk("hid connect report power key 120.\n");
+}
+}
 
 static bool match_scancode(struct hid_usage *usage,
 			   unsigned int cur_idx, unsigned int scancode)
@@ -574,7 +592,7 @@ static void hidinput_configure_usage(struct hid_input *hidinput, struct hid_fiel
 	unsigned long *bit = NULL;
 
 	field->hidinput = hidinput;
-
+      hidinputall =hidinput;
 	if (field->flags & HID_MAIN_ITEM_CONSTANT)
 		goto ignore;
 
@@ -687,6 +705,7 @@ static void hidinput_configure_usage(struct hid_input *hidinput, struct hid_fiel
 			goto ignore;
 
 		if ((usage->hid & 0xf0) == 0x90) {	/* D-pad */
+			printk("hid config usage 0x%x ,field->dpad 0x%x.\n",usage->hid,field->dpad);
 			switch (usage->hid) {
 			case HID_GD_UP:	   usage->hat_dir = 1; break;
 			case HID_GD_DOWN:  usage->hat_dir = 5; break;
@@ -1009,7 +1028,12 @@ static void hidinput_configure_usage(struct hid_input *hidinput, struct hid_fiel
 		case 0x289: map_key_clear(KEY_REPLY);		break;
 		case 0x28b: map_key_clear(KEY_FORWARDMAIL);	break;
 		case 0x28c: map_key_clear(KEY_SEND);		break;
-
+		//add for yy 0109
+		case 0x38d: map_key_clear(KEY_FULLSCREEN);        break;
+		case 0x38e: map_key_clear(KEY_SCREENLOCK);        break;
+		case 0x390: map_key_clear(KEY_SWITCHLANUAGE);        break;
+		case 0x38f: map_key_clear(KEY_NC);        break;
+		//add for yy 0109 over
 		case 0x2c7: map_key_clear(KEY_KBDINPUTASSIST_PREV);		break;
 		case 0x2c8: map_key_clear(KEY_KBDINPUTASSIST_NEXT);		break;
 		case 0x2c9: map_key_clear(KEY_KBDINPUTASSIST_PREVGROUP);		break;
@@ -1283,6 +1307,23 @@ void hidinput_hid_event(struct hid_device *hid, struct hid_field *field, struct 
 		return;
 
 	/* report the usage code as scancode if the key status has changed */
+//add for wakeup by anykey
+if(irq_wake_enabled==true)
+{
+if(usage->code!=0x98)
+{
+input_report_key(input,KEY_POWER,1);
+input_sync(input);
+input_report_key(input,KEY_POWER,0);
+input_sync(input);
+printk("hidinput_hid_event report power key.\n");
+irq_wake_enabled=false;
+return;
+}
+else{
+printk("hidinput_hid_event coffe .\n");
+}
+}//add for wakeup by anykey
 	if (usage->type == EV_KEY &&
 	    (!test_bit(usage->code, input->key)) == value)
 		input_event(input, EV_MSC, MSC_SCAN, usage->hid);
@@ -1499,8 +1540,13 @@ static struct hid_input *hidinput_allocate(struct hid_device *hid)
 	input_dev->close = hidinput_close;
 	input_dev->setkeycode = hidinput_setkeycode;
 	input_dev->getkeycode = hidinput_getkeycode;
+	if(hid->product==0x610B)
+	{
+		input_dev->name = "Lenovo Keyboard Pack for Tab P11 Pro";
 
+	}else{
 	input_dev->name = hid->name;
+	}
 	input_dev->phys = hid->phys;
 	input_dev->uniq = hid->uniq;
 	input_dev->id.bustype = hid->bus;
@@ -1675,6 +1721,7 @@ int hidinput_connect(struct hid_device *hid, unsigned int force)
 		if (input_register_device(hidinput->input))
 			goto out_unwind;
 		hidinput->registered = true;
+		hid->inputregister=true;
 	}
 
 	if (list_empty(&hid->inputs)) {
@@ -1701,9 +1748,16 @@ void hidinput_disconnect(struct hid_device *hid)
 	list_for_each_entry_safe(hidinput, next, &hid->inputs, list) {
 		list_del(&hidinput->list);
 		if (hidinput->registered)
+			{
+		pr_err(" hid unregister input device .\n");
+		hid->inputregister=false;
 			input_unregister_device(hidinput->input);
+			}
 		else
+			{
+			pr_err(" hid free input device .\n");
 			input_free_device(hidinput->input);
+			}
 		kfree(hidinput);
 	}
 
